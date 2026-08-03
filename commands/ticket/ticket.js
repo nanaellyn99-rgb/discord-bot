@@ -21,9 +21,14 @@ module.exports = {
 
             const embed = new EmbedBuilder()
                 .setTitle("Pusat Bantuan NarwHall MC")
-                .setDescription("Silakan pilih kategori di bawah ini untuk membuka tiket bantuan. Staff kami akan segera merespon.")
+                .setDescription("Silakan pilih kategori di bawah ini untuk membuka tiket bantuan. Staff kami akan segera merespon.\n\n" +
+                                "⚠️ **Gunakan hanya dalam keadaan tertentu seperti:**\n" +
+                                "> ( Pembelian, Melaporkan Pemain, Melaporkan Bug, Dan kesalahan sistem )\n\n" +
+                                "✅ **Tunggu sampai staff merespon (Jangan Spamming)**\n" +
+                                "✅ **Deskripsikan keluhan anda dengan jelas**")
                 .setColor("Blue")
-                .setFooter({ text: "Sistem Tiket Otomatis" });
+                .setFooter({ text: "Sistem Tiket Otomatis • NarwHall MC" })
+                .setTimestamp();
 
             const select = new StringSelectMenuBuilder()
                 .setCustomId('ticket_category_select')
