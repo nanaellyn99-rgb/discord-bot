@@ -67,11 +67,6 @@ client.once(Events.ClientReady, c => {
     console.log('==========================================');
 });
 
-// Fallback: Respon pesan biasa (untuk tes jika slash command gagal)
-client.on(Events.MessageCreate, message => {
-    if (message.content === '!testbot') {
-        message.reply('Bot aktif dan bisa membaca pesan! Jika slash command (/) tidak muncul, berarti masalah ada pada pendaftaran atau izin applications.commands.');
-    }
-});
+// Event MessageCreate sekarang ditangani secara otomatis oleh loader event di atas.
 
 client.login(process.env.DISCORD_TOKEN);
