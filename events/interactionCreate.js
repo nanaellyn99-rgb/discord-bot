@@ -87,8 +87,14 @@ module.exports = {
                 let catLabel = category === 'player_abuse' ? 'Abuse' : category === 'bug_report' ? 'Bug' : 'General';
 
                 try {
+                    console.log(`Mencoba membuat tiket di kategori: ${process.env.TICKET_CATEGORY_ID}`);
+                    
+                    if (!process.env.TICKET_CATEGORY_ID) {
+                        return await interaction.editReply({ content: "ERROR: TICKET_CATEGORY_ID tidak ditemukan di environment variables!" });
+                    }
+
                     const ticketChannel = await guild.channels.create({
-                        name: `ticket-${catLabel.toLowerCase()}-${member.user.username}`,
+                        name: `ticket-${catLabel.toLowerCase()}-${member.user.username.toLowerCase().replace(/[^a-z0-9-]/g, '')}`,
                         type: ChannelType.GuildText,
                         parent: process.env.TICKET_CATEGORY_ID,
                         topic: member.id,
@@ -113,8 +119,10 @@ module.exports = {
                     await ticketChannel.send({ content: `<@${member.id}> | <@&${process.env.STAFF_ROLE_ID}>`, embeds: [embed], components: [row] });
                     await interaction.editReply({ content: `Tiket berhasil dibuat: ${ticketChannel}` });
                 } catch (err) {
-                    console.error(err);
-                    await interaction.editReply({ content: "Gagal membuat channel tiket. Pastikan ID Kategori di .env sudah benar." });
+                    console.error("DETIL ERROR PEMBUATAN TIKET:", err);
+                    await interaction.editReply({ 
+                        content: `Gagal membuat channel tiket.\n**Error:** ${err.message}\n**Saran:** Pastikan Bot punya izin 'Manage Channels' dan ID Kategori \`${process.env.TICKET_CATEGORY_ID}\` benar.` 
+                    });
                 }
             }
         }
