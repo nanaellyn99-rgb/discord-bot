@@ -1,194 +1,121 @@
-const { Events, ChannelType, PermissionFlagsBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, StringSelectMenuOptionBuilder } = require("discord.js");
+const { Events, ChannelType, PermissionFlagsBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 const { createTranscript } = require("discord-html-transcripts");
 
 module.exports = {
     name: Events.InteractionCreate,
     async execute(interaction) {
+        // 1. Penanganan Slash Commands
         if (interaction.isChatInputCommand()) {
             const command = interaction.client.commands.get(interaction.commandName);
-
-            if (!command) {
-                console.error(`No command matching ${interaction.commandName} was found.`);
-                return;
-            }
+            if (!command) return;
 
             try {
                 await command.execute(interaction);
             } catch (error) {
                 console.error(error);
-                if (interaction.replied || interaction.deferred) {
-                    await interaction.followUp({ content: 'There was an error while executing this command!', ephemeral: true });
-                } else {
-                    await interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
-                }
+                await interaction.reply({ content: 'Terjadi kesalahan saat menjalankan perintah ini!', ephemeral: true }).catch(() => {});
             }
-        } else if (interaction.isButton()) {
-            if (interaction.customId === 'open_ticket_panel') {
-                await interaction.deferReply({ ephemeral: true });
-                const select = new StringSelectMenuBuilder()
-                    .setCustomId('ticket_category_select')
-                    .setPlaceholder('Pilih kategori tiket Anda...')
-                    .addOptions(
-                        new StringSelectMenuOptionBuilder()
-                            .setLabel('Laporan Player Abuse / Nakal')
-                            .setDescription('Laporkan pemain yang melanggar aturan atau berperilaku tidak pantas.')
-                            .setValue('player_abuse'),
-                        new StringSelectMenuOptionBuilder()
-                            .setLabel('Ada Bug')
-                            .setDescription('Laporkan bug atau masalah teknis yang Anda temukan.')
-                            .setValue('bug_report'),
-                        new StringSelectMenuOptionBuilder()
-                            .setLabel('Ada Masalah General')
-                            .setDescription('Pertanyaan umum atau masalah lain yang tidak termasuk kategori di atas.')
-                            .setValue('general_issue'),
-                    );
+        } 
+        
+        // 2. Penanganan Tombol (Tutup & Klaim)
+        else if (interaction.isButton()) {
+            const { customId, channel, guild, member } = interaction;
 
-                const row = new ActionRowBuilder()
-                    .addComponents(select);
-
-                await interaction.editReply({ content: 'Silakan pilih kategori tiket Anda:', ephemeral: true, components: [row] });
-
-            } else if (interaction.customId === 'close_ticket') {
-                const channel = interaction.channel;
-                const guild = interaction.guild;
-                const member = interaction.member;
-
-                // Hanya staff atau pembuat tiket yang bisa menutup tiket
+            if (customId === 'close_ticket') {
                 if (!member.roles.cache.has(process.env.STAFF_ROLE_ID) && channel.topic !== member.id) {
-                    return interaction.reply({ content: "Anda tidak memiliki izin untuk menutup tiket ini.", ephemeral: true });
+                    return interaction.reply({ content: "Hanya Staff atau pemilik tiket yang bisa menutup ini.", ephemeral: true });
                 }
 
-                await interaction.deferReply({ ephemeral: true });
+                await interaction.reply({ content: "Sedang menutup tiket dan menyimpan transkrip...", ephemeral: true });
 
-                const transcriptChannel = guild.channels.cache.get(process.env.TRANSCRIPT_CHANNEL_ID); // Channel untuk log transkrip
-                if (!transcriptChannel) {
-                    return interaction.followUp({ content: "Channel transkrip tidak ditemukan. Mohon hubungi administrator bot.", ephemeral: true });
+                try {
+                    const transcriptChannel = guild.channels.cache.get(process.env.TRANSCRIPT_CHANNEL_ID);
+                    const transcript = await createTranscript(channel, { 
+                        limit: -1, 
+                        fileName: `transcript-${channel.name}.html`,
+                    });
+
+                    if (transcriptChannel) {
+                        await transcriptChannel.send({
+                            embeds: [new EmbedBuilder()
+                                .setTitle("Tiket Ditutup")
+                                .addFields(
+                                    { name: "Channel", value: channel.name, inline: true },
+                                    { name: "Pemilik", value: `<@${channel.topic}>`, inline: true },
+                                    { name: "Ditutup Oleh", value: `<@${member.id}>`, inline: true }
+                                )
+                                .setColor("Red")
+                                .setTimestamp()],
+                            files: [transcript]
+                        });
+                    }
+                    
+                    setTimeout(() => channel.delete().catch(() => {}), 5000);
+                } catch (err) {
+                    console.error(err);
                 }
-
-                const transcript = await createTranscript(channel, { 
-                    limit: -1, // Ambil semua pesan
-                    returnBuffer: false, // Mengembalikan path file
-                    fileName: `ticket-${channel.name}.html`,
-                });
-
-                const transcriptMessage = await transcriptChannel.send({
-                    files: [transcript],
-                    embeds: [new EmbedBuilder()
-                        .setTitle("Transkrip Tiket")
-                        .setDescription(`Tiket ${channel.name} ditutup oleh ${member.user.tag}`)
-                        .addFields(
-                            { name: "Pengguna", value: `<@${channel.topic}>`, inline: true },
-                            { name: "Ditutup Oleh", value: `<@${member.id}>`, inline: true },
-                            { name: "Waktu Ditutup", value: new Date().toLocaleString(), inline: true }
-                        )
-                        .setColor("Red")]
-                });
-
-                await interaction.followUp({ content: `Tiket berhasil ditutup. Transkrip tersedia di ${transcriptChannel}.`, ephemeral: true });
-                
-                // Hapus channel setelah beberapa saat
-                setTimeout(() => {
-                    channel.delete().catch(console.error);
-                }, 5000); // Hapus setelah 5 detik
-
-            } else if (interaction.customId === 'claim_ticket') {
-                const channel = interaction.channel;
-                const member = interaction.member;
-
+            } 
+            
+            else if (customId === 'claim_ticket') {
                 if (!member.roles.cache.has(process.env.STAFF_ROLE_ID)) {
-                    return interaction.reply({ content: "Anda tidak memiliki izin untuk mengambil tiket ini.", ephemeral: true });
+                    return interaction.reply({ content: "Hanya Staff yang bisa mengklaim tiket.", ephemeral: true });
                 }
-
-                // Cek apakah tiket sudah diklaim
                 if (channel.name.includes("claimed")) {
                     return interaction.reply({ content: "Tiket ini sudah diklaim.", ephemeral: true });
                 }
 
-                await channel.setName(`${channel.name}-claimed-${member.user.username.toLowerCase().replace(/[^a-z0-9-]/g, '')}`);
-                await channel.send({ content: `<@${member.id}> telah mengambil tiket ini.` });
-                await interaction.reply({ content: "Anda telah mengambil tiket ini.", ephemeral: true });
+                await channel.setName(`claimed-${channel.name}`);
+                await interaction.reply({ content: `Tiket ini telah diklaim oleh <@${member.id}>.` });
             }
-        } else if (interaction.isStringSelectMenu()) {
+        } 
+        
+        // 3. Penanganan Select Menu (Langsung Buat Tiket)
+        else if (interaction.isStringSelectMenu()) {
             if (interaction.customId === 'ticket_category_select') {
                 const category = interaction.values[0];
-                const guild = interaction.guild;
-                const member = interaction.member;
+                const { guild, member } = interaction;
 
-                // Check if user already has an open ticket
-                const existingTicket = guild.channels.cache.find(c => c.name.startsWith(`ticket-${member.user.username.toLowerCase().replace(/[^a-z0-9-]/g, '')}`) && c.topic === member.id);
-                if (existingTicket) {
-                    return interaction.followUp({ content: `Anda sudah memiliki tiket yang terbuka: ${existingTicket}.`, ephemeral: true });
+                // Cek apakah user sudah punya tiket
+                const existing = guild.channels.cache.find(c => c.topic === member.id && c.name.includes("ticket"));
+                if (existing) {
+                    return interaction.reply({ content: `Anda sudah memiliki tiket terbuka di ${existing}.`, ephemeral: true });
                 }
 
-                // Map category values to more readable names for channel
-                let categoryName = "";
-                switch (category) {
-                    case "player_abuse":
-                        categoryName = "player-abuse";
-                        break;
-                    case "bug_report":
-                        categoryName = "bug-report";
-                        break;
-                    case "general_issue":
-                        categoryName = "general";
-                        break;
-                    default:
-                        categoryName = "unknown";
-                }
+                // Respon awal agar tidak timeout
+                await interaction.reply({ content: "Sedang membuatkan tiket untuk Anda...", ephemeral: true });
 
-                // Create ticket channel
-                const ticketChannel = await guild.channels.create({
-                    name: `ticket-${categoryName}-${member.user.username.toLowerCase().replace(/[^a-z0-9-]/g, '')}`,
-                    type: ChannelType.GuildText,
-                    parent: process.env.TICKET_CATEGORY_ID, // ID kategori tiket dari .env
-                    topic: member.id, // Menyimpan ID pengguna sebagai topik channel untuk identifikasi
-                    permissionOverwrites: [
-                        {
-                            id: guild.id,
-                            deny: [PermissionFlagsBits.ViewChannel],
-                        },
-                        {
-                            id: member.id,
-                            allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory],
-                        },
-                        {
-                            id: process.env.STAFF_ROLE_ID, // ID peran Customer Service/Admin dari .env
-                            allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory],
-                        },
-                    ],
-                });
+                let catLabel = category === 'player_abuse' ? 'Abuse' : category === 'bug_report' ? 'Bug' : 'General';
 
-                const ticketEmbed = new EmbedBuilder()
-                    .setTitle("Tiket Baru")
-                    .setDescription(`Halo ${member},
-Terima kasih telah membuat tiket dengan kategori: **${category.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}**.
-Customer Service atau Admin akan segera membantu Anda.
-Mohon jelaskan masalah Anda secara detail.`) // Menambahkan instruksi untuk pengguna
-                    .setColor("Green")
-                    .addFields(
-                        { name: "Pengguna", value: `<@${member.id}>`, inline: true },
-                        { name: "Kategori", value: category.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()), inline: true },
-                        { name: "Waktu Dibuat", value: new Date().toLocaleString(), inline: true }
+                try {
+                    const ticketChannel = await guild.channels.create({
+                        name: `ticket-${catLabel.toLowerCase()}-${member.user.username}`,
+                        type: ChannelType.GuildText,
+                        parent: process.env.TICKET_CATEGORY_ID,
+                        topic: member.id,
+                        permissionOverwrites: [
+                            { id: guild.id, deny: [PermissionFlagsBits.ViewChannel] },
+                            { id: member.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] },
+                            { id: process.env.STAFF_ROLE_ID, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] },
+                        ],
+                    });
+
+                    const embed = new EmbedBuilder()
+                        .setTitle(`Tiket: ${catLabel}`)
+                        .setDescription(`Halo <@${member.id}>, silakan jelaskan masalah Anda.\n\n**Kategori:** ${catLabel}\n**Staff:** <@&${process.env.STAFF_ROLE_ID}>`)
+                        .setColor("Green")
+                        .setTimestamp();
+
+                    const row = new ActionRowBuilder().addComponents(
+                        new ButtonBuilder().setCustomId("claim_ticket").setLabel("Klaim").setStyle(ButtonStyle.Success).setEmoji("🙋"),
+                        new ButtonBuilder().setCustomId("close_ticket").setLabel("Tutup").setStyle(ButtonStyle.Danger).setEmoji("🔒")
                     );
 
-                const closeButton = new ButtonBuilder()
-                    .setCustomId("close_ticket")
-                    .setLabel("Tutup Tiket")
-                    .setStyle(ButtonStyle.Danger)
-                    .setEmoji("🔒");
-
-                const claimButton = new ButtonBuilder()
-                    .setCustomId("claim_ticket")
-                    .setLabel("Ambil Tiket")
-                    .setStyle(ButtonStyle.Secondary)
-                    .setEmoji("🙋");
-
-                const row = new ActionRowBuilder()
-                    .addComponents(claimButton, closeButton);
-
-                await ticketChannel.send({ content: `<@${member.id}> <@&${process.env.STAFF_ROLE_ID}>`, embeds: [ticketEmbed], components: [row] });
-
-                await interaction.followUp({ content: `Tiket Anda telah dibuat di ${ticketChannel}.`, ephemeral: true });
+                    await ticketChannel.send({ content: `<@${member.id}> | <@&${process.env.STAFF_ROLE_ID}>`, embeds: [embed], components: [row] });
+                    await interaction.editReply({ content: `Tiket berhasil dibuat: ${ticketChannel}` });
+                } catch (err) {
+                    console.error(err);
+                    await interaction.editReply({ content: "Gagal membuat channel tiket. Pastikan ID Kategori di .env sudah benar." });
+                }
             }
         }
     },

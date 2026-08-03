@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, PermissionFlagsBits, StringSelectMenuBuilder } = require("discord.js");
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ChannelType, StringSelectMenuBuilder, StringSelectMenuOptionBuilder } = require("discord.js");
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -12,11 +12,7 @@ module.exports = {
                     option.setName("channel")
                         .setDescription("Channel tempat panel tiket akan dikirim.")
                         .setRequired(true)
-                        .addChannelTypes(ChannelType.GuildText)))
-        .addSubcommand(subcommand =>
-            subcommand
-                .setName("close")
-                .setDescription("Menutup tiket yang sedang aktif.")),
+                        .addChannelTypes(ChannelType.GuildText))),
     async execute(interaction) {
         const subcommand = interaction.options.getSubcommand();
 
@@ -24,25 +20,37 @@ module.exports = {
             const channel = interaction.options.getChannel("channel");
 
             const embed = new EmbedBuilder()
-                .setTitle("Sistem Tiket")
-                .setDescription("Klik tombol di bawah untuk membuat tiket baru dan pilih kategori masalah Anda.")
-                .setColor("Blue");
+                .setTitle("Pusat Bantuan NarwHall MC")
+                .setDescription("Silakan pilih kategori di bawah ini untuk membuka tiket bantuan. Staff kami akan segera merespon.")
+                .setColor("Blue")
+                .setFooter({ text: "Sistem Tiket Otomatis" });
 
-            const button = new ButtonBuilder()
-                .setCustomId("open_ticket_panel") // Custom ID diubah untuk memicu select menu
-                .setLabel("Buat Tiket")
-                .setStyle(ButtonStyle.Primary)
-                .setEmoji("🎫");
+            const select = new StringSelectMenuBuilder()
+                .setCustomId('ticket_category_select')
+                .setPlaceholder('Pilih kategori masalah Anda di sini...')
+                .addOptions(
+                    new StringSelectMenuOptionBuilder()
+                        .setLabel('Laporan Player Abuse')
+                        .setDescription('Laporkan pemain nakal atau melanggar aturan.')
+                        .setEmoji('🚫')
+                        .setValue('player_abuse'),
+                    new StringSelectMenuOptionBuilder()
+                        .setLabel('Laporan Bug')
+                        .setDescription('Laporkan masalah teknis atau bug di server.')
+                        .setEmoji('🐛')
+                        .setValue('bug_report'),
+                    new StringSelectMenuOptionBuilder()
+                        .setLabel('Masalah General')
+                        .setDescription('Pertanyaan umum atau bantuan lainnya.')
+                        .setEmoji('❓')
+                        .setValue('general_issue'),
+                );
 
-            const row = new ActionRowBuilder()
-                .addComponents(button);
+            const row = new ActionRowBuilder().addComponents(select);
 
             await channel.send({ embeds: [embed], components: [row] });
 
             await interaction.reply({ content: `Panel tiket berhasil dikirim di ${channel}.`, ephemeral: true });
-        } else if (subcommand === "close") {
-            // Logika untuk menutup tiket sudah ada di interactionCreate.js
-            await interaction.reply({ content: 'Gunakan tombol "Tutup Tiket" di channel tiket untuk menutupnya.', ephemeral: true });
         }
     },
 };
