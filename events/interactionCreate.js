@@ -87,21 +87,35 @@ module.exports = {
                 let catLabel = category === 'player_abuse' ? 'Abuse' : category === 'bug_report' ? 'Bug' : 'General';
 
                 try {
-                    console.log(`Mencoba membuat tiket di kategori: ${process.env.TICKET_CATEGORY_ID}`);
+                    const categoryId = process.env.TICKET_CATEGORY_ID?.trim();
+                    const staffRoleId = process.env.STAFF_ROLE_ID?.trim();
+
+                    console.log(`Mencoba membuat tiket. Kategori: ${categoryId}, Staff Role: ${staffRoleId}`);
                     
-                    if (!process.env.TICKET_CATEGORY_ID) {
-                        return await interaction.editReply({ content: "ERROR: TICKET_CATEGORY_ID tidak ditemukan di environment variables!" });
+                    if (!categoryId) {
+                        return await interaction.editReply({ content: "ERROR: `TICKET_CATEGORY_ID` belum diisi di Railway Variables!" });
+                    }
+                    if (!staffRoleId) {
+                        return await interaction.editReply({ content: "ERROR: `STAFF_ROLE_ID` belum diisi di Railway Variables!" });
+                    }
+
+                    // Cek apakah Role Staff ada di server
+                    const staffRole = guild.roles.cache.get(staffRoleId);
+                    if (!staffRole) {
+                        return await interaction.editReply({ 
+                            content: `ERROR: Role Staff dengan ID \`${staffRoleId}\` tidak ditemukan di server ini. Pastikan ID Role sudah benar!` 
+                        });
                     }
 
                     const ticketChannel = await guild.channels.create({
                         name: `ticket-${catLabel.toLowerCase()}-${member.user.username.toLowerCase().replace(/[^a-z0-9-]/g, '')}`,
                         type: ChannelType.GuildText,
-                        parent: process.env.TICKET_CATEGORY_ID,
+                        parent: categoryId,
                         topic: member.id,
                         permissionOverwrites: [
                             { id: guild.id, deny: [PermissionFlagsBits.ViewChannel] },
                             { id: member.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] },
-                            { id: process.env.STAFF_ROLE_ID, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] },
+                            { id: staffRoleId, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] },
                         ],
                     });
 
