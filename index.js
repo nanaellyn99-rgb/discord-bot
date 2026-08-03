@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits, Collection } = require('discord.js');
+const { Client, GatewayIntentBits, Collection, Events } = require('discord.js');
 const dotenv = require('dotenv');
 const fs = require('fs');
 const path = require('path');
@@ -16,6 +16,7 @@ const client = new Client({
 
 client.commands = new Collection();
 
+// Memuat Commands
 const foldersPath = path.join(__dirname, 'commands');
 const commandFolders = fs.readdirSync(foldersPath);
 
@@ -27,12 +28,11 @@ for (const folder of commandFolders) {
         const command = require(filePath);
         if ('data' in command && 'execute' in command) {
             client.commands.set(command.data.name, command);
-        } else {
-            console.log(`[WARNING] The command at ${filePath} is missing a required "data" or "execute" property.`);
         }
     }
 }
 
+// Memuat Events
 const eventsPath = path.join(__dirname, 'events');
 const eventFiles = fs.readdirSync(eventsPath).filter(file => file.endsWith('.js'));
 
@@ -46,29 +46,31 @@ for (const file of eventFiles) {
     }
 }
 
-client.once('ready', () => {
-    console.log(`Logged in as ${client.user.tag}!`);
+// Logging Debug saat Bot Ready
+client.once(Events.ClientReady, c => {
+    console.log('==========================================');
+    console.log(`STATUS: Bot Berhasil Login sebagai ${c.user.tag}`);
+    console.log(`CLIENT ID: ${c.user.id}`);
+    console.log(`JUMLAH SERVER: ${client.guilds.cache.size}`);
+    
+    console.log('DAFTAR SERVER YANG DIMASUKI:');
+    client.guilds.cache.forEach(guild => {
+        console.log(`- ${guild.name} (ID: ${guild.id})`);
+    });
+    
+    if (process.env.CLIENT_ID !== c.user.id) {
+        console.warn('PERINGATAN: CLIENT_ID di .env TIDAK COCOK dengan ID Bot yang sedang login!');
+        console.warn(`Di .env: ${process.env.CLIENT_ID}`);
+        console.warn(`Asli Bot: ${c.user.id}`);
+    }
+    
+    console.log('==========================================');
 });
 
-client.on('interactionCreate', async interaction => {
-    if (!interaction.isChatInputCommand()) return;
-
-    const command = client.commands.get(interaction.commandName);
-
-    if (!command) {
-        console.error(`No command matching ${interaction.commandName} was found.`);
-        return;
-    }
-
-    try {
-        await command.execute(interaction);
-    } catch (error) {
-        console.error(error);
-        if (interaction.replied || interaction.deferred) {
-            await interaction.followUp({ content: 'There was an error while executing this command!', ephemeral: true });
-        } else {
-            await interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
-        }
+// Fallback: Respon pesan biasa (untuk tes jika slash command gagal)
+client.on(Events.MessageCreate, message => {
+    if (message.content === '!testbot') {
+        message.reply('Bot aktif dan bisa membaca pesan! Jika slash command (/) tidak muncul, berarti masalah ada pada pendaftaran atau izin applications.commands.');
     }
 });
 
