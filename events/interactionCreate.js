@@ -66,6 +66,22 @@ module.exports = {
 
                 await channel.setName(`claimed-${channel.name}`);
                 await interaction.reply({ content: `Tiket ini telah diklaim oleh <@${member.id}>.` });
+
+                // Kirim DM ke pemilik tiket
+                try {
+                    const targetMember = await guild.members.fetch(channel.topic);
+                    if (targetMember) {
+                        const dmEmbed = new EmbedBuilder()
+                            .setTitle("Tiket Anda Telah Diklaim")
+                            .setDescription(`Halo ${targetMember}, tiket Anda di **${guild.name}** telah diklaim oleh Staff **${member.user.tag}**. Silakan cek channel tiket Anda untuk bantuan lebih lanjut.`)
+                            .setColor("Blue")
+                            .setTimestamp();
+                        
+                        await targetMember.send({ embeds: [dmEmbed] }).catch(() => console.log("Gagal mengirim DM: User menutup DM-nya."));
+                    }
+                } catch (err) {
+                    console.error("Gagal mengambil member untuk DM:", err);
+                }
             }
         } 
         
@@ -131,7 +147,12 @@ module.exports = {
                     );
 
                     await ticketChannel.send({ content: `<@${member.id}> | <@&${process.env.STAFF_ROLE_ID}>`, embeds: [embed], components: [row] });
-                    await interaction.editReply({ content: `Tiket berhasil dibuat: ${ticketChannel}` });
+                    
+                    // Reset Select Menu di pesan asli (ephemeral response)
+                    await interaction.editReply({ 
+                        content: `Tiket berhasil dibuat: ${ticketChannel}`,
+                        components: [] // Menghapus menu dari respon ephemeral agar tidak bisa diklik lagi
+                    });
                 } catch (err) {
                     console.error("DETIL ERROR PEMBUATAN TIKET:", err);
                     await interaction.editReply({ 
