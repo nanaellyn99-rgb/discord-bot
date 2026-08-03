@@ -24,6 +24,7 @@ module.exports = {
             }
         } else if (interaction.isButton()) {
             if (interaction.customId === 'open_ticket_panel') {
+                await interaction.deferReply({ ephemeral: true });
                 const select = new StringSelectMenuBuilder()
                     .setCustomId('ticket_category_select')
                     .setPlaceholder('Pilih kategori tiket Anda...')
@@ -45,7 +46,7 @@ module.exports = {
                 const row = new ActionRowBuilder()
                     .addComponents(select);
 
-                await interaction.reply({ content: 'Silakan pilih kategori tiket Anda:', ephemeral: true, components: [row] });
+                await interaction.editReply({ content: 'Silakan pilih kategori tiket Anda:', ephemeral: true, components: [row] });
 
             } else if (interaction.customId === 'close_ticket') {
                 const channel = interaction.channel;
@@ -116,7 +117,7 @@ module.exports = {
                 // Check if user already has an open ticket
                 const existingTicket = guild.channels.cache.find(c => c.name.startsWith(`ticket-${member.user.username.toLowerCase().replace(/[^a-z0-9-]/g, '')}`) && c.topic === member.id);
                 if (existingTicket) {
-                    return interaction.reply({ content: `Anda sudah memiliki tiket yang terbuka: ${existingTicket}.`, ephemeral: true });
+                    return interaction.followUp({ content: `Anda sudah memiliki tiket yang terbuka: ${existingTicket}.`, ephemeral: true });
                 }
 
                 // Map category values to more readable names for channel
@@ -187,7 +188,7 @@ Mohon jelaskan masalah Anda secara detail.`) // Menambahkan instruksi untuk peng
 
                 await ticketChannel.send({ content: `<@${member.id}> <@&${process.env.STAFF_ROLE_ID}>`, embeds: [ticketEmbed], components: [row] });
 
-                await interaction.reply({ content: `Tiket Anda telah dibuat di ${ticketChannel}.`, ephemeral: true });
+                await interaction.followUp({ content: `Tiket Anda telah dibuat di ${ticketChannel}.`, ephemeral: true });
             }
         }
     },
