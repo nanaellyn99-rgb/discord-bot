@@ -29,16 +29,17 @@ module.exports = {
                 await interaction.reply({ content: "Sedang menutup tiket dan menyimpan transkrip...", ephemeral: true });
 
                 try {
-                    const transcriptChannel = guild.channels.cache.get(process.env.TRANSCRIPT_CHANNEL_ID);
                     const transcript = await createTranscript(channel, { 
                         limit: -1, 
                         fileName: `transcript-${channel.name}.html`,
                     });
 
+                    // 1. Kirim ke Channel Log (Transcript Channel)
+                    const transcriptChannel = guild.channels.cache.get(process.env.TRANSCRIPT_CHANNEL_ID);
                     if (transcriptChannel) {
                         await transcriptChannel.send({
                             embeds: [new EmbedBuilder()
-                                .setTitle("Tiket Ditutup")
+                                .setTitle("Log Tiket Ditutup")
                                 .addFields(
                                     { name: "Channel", value: channel.name, inline: true },
                                     { name: "Pemilik", value: `<@${channel.topic}>`, inline: true },
@@ -49,16 +50,33 @@ module.exports = {
                             files: [transcript]
                         });
                     }
+
+                    // 2. Kirim ke DM Member (Pemilik Tiket)
+                    try {
+                        const targetMember = await guild.members.fetch(channel.topic);
+                        if (targetMember) {
+                            const dmEmbed = new EmbedBuilder()
+                                .setTitle("Tiket Anda Telah Ditutup")
+                                .setDescription(`Halo ${targetMember}, tiket Anda di **${guild.name}** telah ditutup. Berikut adalah transkrip percakapan Anda sebagai catatan.`)
+                                .setColor("Orange")
+                                .setTimestamp();
+                            
+                            await targetMember.send({ embeds: [dmEmbed], files: [transcript] }).catch(() => console.log("Gagal kirim transkrip ke DM: User menutup DM."));
+                        }
+                    } catch (dmErr) {
+                        console.error("Gagal mengambil member untuk kirim transkrip DM:", dmErr);
+                    }
                     
                     setTimeout(() => channel.delete().catch(() => {}), 5000);
                 } catch (err) {
-                    console.error(err);
+                    console.error("Error saat menutup tiket:", err);
                 }
             } 
             
             else if (customId === 'claim_ticket') {
-                if (!member.roles.cache.has(process.env.STAFF_ROLE_ID)) {
-                    return interaction.reply({ content: "Hanya Staff yang bisa mengklaim tiket.", ephemeral: true });
+                // Member sekarang diperbolehkan klaim tiketnya sendiri atau staff klaim tiket
+                if (!member.roles.cache.has(process.env.STAFF_ROLE_ID) && channel.topic !== member.id) {
+                    return interaction.reply({ content: "Anda tidak memiliki izin untuk mengklaim tiket ini.", ephemeral: true });
                 }
                 if (channel.name.includes("claimed")) {
                     return interaction.reply({ content: "Tiket ini sudah diklaim.", ephemeral: true });
