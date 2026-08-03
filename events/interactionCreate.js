@@ -103,7 +103,7 @@ module.exports = {
             }
         } 
         
-        // 3. Penanganan Select Menu (Langsung Buat Tiket)
+        // 3. Penanganan Select Menu (Munculkan Modal)
         else if (interaction.isStringSelectMenu()) {
             if (interaction.customId === 'ticket_category_select') {
                 const category = interaction.values[0];
@@ -112,39 +112,57 @@ module.exports = {
                 // Cek apakah user sudah punya tiket
                 const existing = guild.channels.cache.find(c => c.topic === member.id && c.name.includes("ticket"));
                 if (existing) {
-                    // Reset menu di pesan asli agar tidak nyangkut di pilihan sebelumnya
                     await interaction.update({ components: message.components });
                     return interaction.followUp({ content: `Anda sudah memiliki tiket terbuka di ${existing}.`, ephemeral: true });
                 }
 
-                // Reset menu di pesan asli (Panel Utama) agar kembali ke "Pilih kategori..."
-                await interaction.update({ components: message.components });
-                
-                // Kirim pesan ephemeral sebagai status progress
-                const statusMessage = await interaction.followUp({ content: "Sedang membuatkan tiket untuk Anda...", ephemeral: true });
+                // Munculkan Modal
+                const { ModalBuilder, TextInputBuilder, TextInputStyle } = require("discord.js");
+                const modal = new ModalBuilder()
+                    .setCustomId(`ticket_modal_${category}`)
+                    .setTitle('Formulir Laporan Tiket');
+
+                const titleInput = new TextInputBuilder()
+                    .setCustomId('ticket_title')
+                    .setLabel("Judul Masalah")
+                    .setStyle(TextInputStyle.Short)
+                    .setPlaceholder("Contoh: Laporan Player Cheating / Bug Item")
+                    .setRequired(true);
+
+                const descriptionInput = new TextInputBuilder()
+                    .setCustomId('ticket_description')
+                    .setLabel("Jelaskan Masalah Secara Detail")
+                    .setStyle(TextInputStyle.Paragraph)
+                    .setPlaceholder("Tuliskan detail masalah Anda di sini agar Staff mudah membantu...")
+                    .setRequired(true);
+
+                const firstActionRow = new ActionRowBuilder().addComponents(titleInput);
+                const secondActionRow = new ActionRowBuilder().addComponents(descriptionInput);
+
+                modal.addComponents(firstActionRow, secondActionRow);
+
+                await interaction.showModal(modal);
+                // Reset menu di panel utama
+                await interaction.editReply({ components: message.components }).catch(() => {});
+            }
+        }
+
+        // 4. Penanganan Modal Submission
+        else if (interaction.isModalSubmit()) {
+            if (interaction.customId.startsWith('ticket_modal_')) {
+                const category = interaction.customId.replace('ticket_modal_', '');
+                const title = interaction.fields.getTextInputValue('ticket_title');
+                const description = interaction.fields.getTextInputValue('ticket_description');
+                const { guild, member } = interaction;
+
+                await interaction.reply({ content: "Sedang membuatkan tiket untuk Anda...", ephemeral: true });
 
                 let catLabel = category === 'player_abuse' ? 'Abuse' : category === 'bug_report' ? 'Bug' : 'General';
+                let embedColor = category === 'player_abuse' ? '#FF0000' : category === 'bug_report' ? '#FFFF00' : '#00FF00';
 
                 try {
                     const categoryId = process.env.TICKET_CATEGORY_ID?.trim();
                     const staffRoleId = process.env.STAFF_ROLE_ID?.trim();
-
-                    console.log(`Mencoba membuat tiket. Kategori: ${categoryId}, Staff Role: ${staffRoleId}`);
-                    
-                    if (!categoryId) {
-                        return await interaction.editReply({ content: "ERROR: `TICKET_CATEGORY_ID` belum diisi di Railway Variables!" });
-                    }
-                    if (!staffRoleId) {
-                        return await interaction.editReply({ content: "ERROR: `STAFF_ROLE_ID` belum diisi di Railway Variables!" });
-                    }
-
-                    // Cek apakah Role Staff ada di server
-                    const staffRole = guild.roles.cache.get(staffRoleId);
-                    if (!staffRole) {
-                        return await interaction.editReply({ 
-                            content: `ERROR: Role Staff dengan ID \`${staffRoleId}\` tidak ditemukan di server ini. Pastikan ID Role sudah benar!` 
-                        });
-                    }
 
                     const ticketChannel = await guild.channels.create({
                         name: `ticket-${catLabel.toLowerCase()}-${member.user.username.toLowerCase().replace(/[^a-z0-9-]/g, '')}`,
@@ -159,27 +177,28 @@ module.exports = {
                     });
 
                     const embed = new EmbedBuilder()
-                        .setTitle(`Tiket: ${catLabel}`)
-                        .setDescription(`Halo <@${member.id}>, silakan jelaskan masalah Anda.\n\n**Kategori:** ${catLabel}\n**Staff:** <@&${process.env.STAFF_ROLE_ID}>`)
-                        .setColor("Green")
+                        .setTitle(`🎫 Tiket Baru: ${title}`)
+                        .setDescription(`Halo <@${member.id}>, terima kasih telah melapor. Staff akan segera membantu Anda.`)
+                        .addFields(
+                            { name: "👤 Pengirim", value: `<@${member.id}>`, inline: true },
+                            { name: "📂 Kategori", value: catLabel, inline: true },
+                            { name: "📝 Judul", value: title },
+                            { name: "📄 Detail Masalah", value: description }
+                        )
+                        .setColor(embedColor)
+                        .setThumbnail(member.user.displayAvatarURL())
+                        .setFooter({ text: `ID Pengguna: ${member.id}` })
                         .setTimestamp();
 
                     const row = new ActionRowBuilder().addComponents(
-                        new ButtonBuilder().setCustomId("claim_ticket").setLabel("Klaim").setStyle(ButtonStyle.Success).setEmoji("🙋"),
-                        new ButtonBuilder().setCustomId("close_ticket").setLabel("Tutup").setStyle(ButtonStyle.Danger).setEmoji("🔒")
+                        new ButtonBuilder().setCustomId("close_ticket").setLabel("Tutup Tiket").setStyle(ButtonStyle.Danger).setEmoji("🔒")
                     );
 
-                    await ticketChannel.send({ content: `<@${member.id}> | <@&${process.env.STAFF_ROLE_ID}>`, embeds: [embed], components: [row] });
-                    
-                    // Update pesan status ephemeral
-                    await interaction.editReply({ 
-                        content: `Tiket berhasil dibuat: ${ticketChannel}`
-                    });
+                    await ticketChannel.send({ content: `<@&${staffRoleId}> | <@${member.id}>`, embeds: [embed], components: [row] });
+                    await interaction.editReply({ content: `Tiket Anda berhasil dibuat: ${ticketChannel}` });
                 } catch (err) {
-                    console.error("DETIL ERROR PEMBUATAN TIKET:", err);
-                    await interaction.editReply({ 
-                        content: `Gagal membuat channel tiket.\n**Error:** ${err.message}\n**Saran:** Pastikan Bot punya izin 'Manage Channels' dan ID Kategori \`${process.env.TICKET_CATEGORY_ID}\` benar.` 
-                    });
+                    console.error(err);
+                    await interaction.editReply({ content: `Gagal membuat tiket: ${err.message}` });
                 }
             }
         }
