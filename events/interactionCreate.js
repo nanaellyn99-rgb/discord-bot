@@ -89,16 +89,21 @@ module.exports = {
         else if (interaction.isStringSelectMenu()) {
             if (interaction.customId === 'ticket_category_select') {
                 const category = interaction.values[0];
-                const { guild, member } = interaction;
+                const { guild, member, message } = interaction;
 
                 // Cek apakah user sudah punya tiket
                 const existing = guild.channels.cache.find(c => c.topic === member.id && c.name.includes("ticket"));
                 if (existing) {
-                    return interaction.reply({ content: `Anda sudah memiliki tiket terbuka di ${existing}.`, ephemeral: true });
+                    // Reset menu di pesan asli agar tidak nyangkut di pilihan sebelumnya
+                    await interaction.update({ components: message.components });
+                    return interaction.followUp({ content: `Anda sudah memiliki tiket terbuka di ${existing}.`, ephemeral: true });
                 }
 
-                // Respon awal agar tidak timeout
-                await interaction.reply({ content: "Sedang membuatkan tiket untuk Anda...", ephemeral: true });
+                // Reset menu di pesan asli (Panel Utama) agar kembali ke "Pilih kategori..."
+                await interaction.update({ components: message.components });
+                
+                // Kirim pesan ephemeral sebagai status progress
+                const statusMessage = await interaction.followUp({ content: "Sedang membuatkan tiket untuk Anda...", ephemeral: true });
 
                 let catLabel = category === 'player_abuse' ? 'Abuse' : category === 'bug_report' ? 'Bug' : 'General';
 
@@ -148,10 +153,9 @@ module.exports = {
 
                     await ticketChannel.send({ content: `<@${member.id}> | <@&${process.env.STAFF_ROLE_ID}>`, embeds: [embed], components: [row] });
                     
-                    // Reset Select Menu di pesan asli (ephemeral response)
+                    // Update pesan status ephemeral
                     await interaction.editReply({ 
-                        content: `Tiket berhasil dibuat: ${ticketChannel}`,
-                        components: [] // Menghapus menu dari respon ephemeral agar tidak bisa diklik lagi
+                        content: `Tiket berhasil dibuat: ${ticketChannel}`
                     });
                 } catch (err) {
                     console.error("DETIL ERROR PEMBUATAN TIKET:", err);
