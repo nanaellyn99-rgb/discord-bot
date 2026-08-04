@@ -34,7 +34,7 @@ for (const folder of commandFolders) {
 
 // Memuat Events
 const eventsPath = path.join(__dirname, 'events');
-const eventFiles = fs.readdirSync(eventsPath).filter(file => file.endsWith('.js'));
+const eventFiles = fs.readdirSync(eventsPath).filter(file => file.endsWith(".js") && file !== "messageCreate.js"); // messageCreate.js ditangani terpisah jika perlu
 
 for (const file of eventFiles) {
     const filePath = path.join(eventsPath, file);
@@ -70,3 +70,7 @@ client.once(Events.ClientReady, c => {
 // Event MessageCreate sekarang ditangani secara otomatis oleh loader event di atas.
 
 client.login(process.env.DISCORD_TOKEN);
+
+// Memuat event messageCreate secara manual karena ada kondisi khusus
+const messageCreateEvent = require("./events/messageCreate.js");
+client.on(messageCreateEvent.name, messageCreateEvent.execute);
