@@ -10,7 +10,14 @@ module.exports = {
         const welcomeChannelId = process.env.WELCOME_CHANNEL_ID;
         if (!welcomeChannelId) return console.log("WELCOME_CHANNEL_ID tidak diatur di .env");
 
-        const channel = member.guild.channels.cache.get(welcomeChannelId);
+        let channel = member.guild.channels.cache.get(welcomeChannelId);
+        if (!channel) {
+            try {
+                channel = await member.guild.channels.fetch(welcomeChannelId);
+            } catch (err) {
+                return console.log(`Channel welcome dengan ID ${welcomeChannelId} tidak ditemukan atau bot tidak punya akses.`);
+            }
+        }
         if (!channel) return console.log(`Channel welcome dengan ID ${welcomeChannelId} tidak ditemukan.`);
 
         const canvas = createCanvas(1280, 720); // Ukuran gambar

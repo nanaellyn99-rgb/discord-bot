@@ -10,7 +10,14 @@ module.exports = {
         const goodbyeChannelId = process.env.GOODBYE_CHANNEL_ID;
         if (!goodbyeChannelId) return console.log("GOODBYE_CHANNEL_ID tidak diatur di .env");
 
-        const channel = member.guild.channels.cache.get(goodbyeChannelId);
+        let channel = member.guild.channels.cache.get(goodbyeChannelId);
+        if (!channel) {
+            try {
+                channel = await member.guild.channels.fetch(goodbyeChannelId);
+            } catch (err) {
+                return console.log(`Channel goodbye dengan ID ${goodbyeChannelId} tidak ditemukan atau bot tidak punya akses.`);
+            }
+        }
         if (!channel) return console.log(`Channel goodbye dengan ID ${goodbyeChannelId} tidak ditemukan.`);
 
         const canvas = createCanvas(1280, 720); // Ukuran gambar
