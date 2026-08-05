@@ -10,8 +10,20 @@ module.exports = {
 
         // 1. Perintah Test Welcome (^^welcome)
         if (content === '^^welcome') {
-            const welcomeEvent = require('./guildMemberAdd.js');
-            return welcomeEvent.execute(message.member);
+            console.log(`DEBUG: Perintah ^^welcome dideteksi dari ${message.author.tag}`);
+            
+            // Kirim pesan awal agar tahu bot merespon
+            await message.reply("⏳ Sedang memproses gambar welcome, mohon tunggu...").catch(err => console.error("Gagal reply:", err));
+
+            try {
+                const welcomeEvent = require('./guildMemberAdd.js');
+                await welcomeEvent.execute(message.member);
+                console.log("DEBUG: Eksekusi welcomeEvent.execute selesai.");
+            } catch (err) {
+                console.error("ERROR saat eksekusi ^^welcome:", err);
+                await message.reply(`❌ Gagal memproses gambar: \`${err.message}\``).catch(() => {});
+            }
+            return;
         }
 
         // Daftar kata kunci untuk Tutorial Lands
