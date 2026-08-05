@@ -1,6 +1,6 @@
 FROM node:22-bookworm
 
-# Install dependensi sistem untuk canvas
+# Install dependensi sistem untuk canvas dan font
 RUN apt-get update && apt-get install -y \
     build-essential \
     pkg-config \
@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install -y \
     libgif-dev \
     librsvg2-dev \
     libpixman-1-dev \
+    fonts-liberation \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
