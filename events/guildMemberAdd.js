@@ -20,33 +20,45 @@ module.exports = {
         const background = await loadImage(path.join(__dirname, "..", "welcome-bg.png"));
         ctx.drawImage(background, 0, 0, canvas.width, canvas.height);
 
-        // Gaya teks
-        ctx.fillStyle = "#ffffff";
-        ctx.font = "60px sans-serif";
-        ctx.textAlign = "center";
-
-        // Teks Selamat Datang
-        ctx.fillText("SELAMAT DATANG", canvas.width / 2, canvas.height / 2 - 100);
-
-        // Nama Member
-        ctx.font = "80px sans-serif";
-        ctx.fillText(member.user.username.toUpperCase(), canvas.width / 2, canvas.height / 2);
-
-        // Jumlah Member
-        ctx.font = "40px sans-serif";
-        ctx.fillText(`Anda adalah member ke-${member.guild.memberCount}`, canvas.width / 2, canvas.height / 2 + 70);
-
-        // Avatar
+        // Avatar (Lingkaran di Tengah Atas)
+        ctx.save();
         ctx.beginPath();
-        ctx.arc(canvas.width / 2, canvas.height / 2 + 200, 100, 0, Math.PI * 2, true);
+        ctx.arc(canvas.width / 2, 250, 150, 0, Math.PI * 2, true);
         ctx.closePath();
         ctx.clip();
+        const avatar = await loadImage(member.user.displayAvatarURL({ extension: "png", size: 512 }));
+        ctx.drawImage(avatar, canvas.width / 2 - 150, 100, 300, 300);
+        ctx.restore();
 
-        const avatar = await loadImage(member.user.displayAvatarURL({ extension: "png", size: 256 }));
-        ctx.drawImage(avatar, canvas.width / 2 - 100, canvas.height / 2 + 100, 200, 200);
+        // Overlay Lingkaran Putih (Border Avatar)
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 10;
+        ctx.beginPath();
+        ctx.arc(canvas.width / 2, 250, 155, 0, Math.PI * 2, true);
+        ctx.stroke();
+
+        // Gaya teks
+        ctx.fillStyle = "#ffffff";
+        ctx.textAlign = "center";
+
+        // Teks WELCOME (Besar)
+        ctx.font = "bold 120px sans-serif";
+        ctx.fillText("WELCOME", canvas.width / 2, 520);
+
+        // Nama Member (Sedang)
+        ctx.font = "60px sans-serif";
+        ctx.fillText(member.user.username.toUpperCase(), canvas.width / 2, 600);
+
+        // Teks Bawah (Kecil)
+        ctx.font = "35px sans-serif";
+        ctx.fillText(`SELAMAT DATANG DI ${member.guild.name.toUpperCase()} 🦞🐬`, canvas.width / 2, 670);
 
         const attachment = new AttachmentBuilder(canvas.toBuffer(), { name: "welcome-image.png" });
 
-        channel.send({ content: `Halo <@${member.id}>, selamat datang di **${member.guild.name}**!`, files: [attachment] });
+        const welcomeMessage = `🦞 Hai <@${member.id}>! Selamat datang di **${member.guild.name}** 🐬, Semoga kamu betah ya!\n` +
+                               `Patuhi Semua Rules, Di server ini kami benar benar menjaga kenyamanan!\n` +
+                               `Jangan lupa say hi dengan semua orang, Enjoy 🤗`;
+
+        channel.send({ content: welcomeMessage, files: [attachment] });
     },
 };

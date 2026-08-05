@@ -8,6 +8,12 @@ module.exports = {
 
         const content = message.content.toLowerCase();
 
+        // 1. Perintah Test Welcome (^^welcome)
+        if (content === '^^welcome') {
+            const welcomeEvent = require('./guildMemberAdd.js');
+            return welcomeEvent.execute(message.member);
+        }
+
         // Daftar kata kunci untuk Tutorial Lands
         const landsKeywords = ['land', 'lands', 'claim'];
 
