@@ -20,45 +20,68 @@ module.exports = {
         }
         if (!channel) return console.log(`Channel welcome dengan ID ${welcomeChannelId} tidak ditemukan.`);
 
-        const canvas = createCanvas(1280, 720); // Ukuran gambar
+        // Ukuran canvas sesuai contoh (1024x500)
+        const canvas = createCanvas(1024, 500);
         const ctx = canvas.getContext("2d");
 
         // Load background image
-        const background = await loadImage(path.join(__dirname, "..", "welcome-bg.png"));
-        ctx.drawImage(background, 0, 0, canvas.width, canvas.height);
+        try {
+            const background = await loadImage(path.join(__dirname, "..", "welcome-bg.png"));
+            ctx.drawImage(background, 0, 0, canvas.width, canvas.height);
+        } catch (err) {
+            console.error("Gagal memuat background image:", err);
+            // Fallback warna jika gambar gagal dimuat
+            ctx.fillStyle = "#2c2f33";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
 
         // Avatar (Lingkaran di Tengah Atas)
+        const avatarSize = 220;
+        const avatarX = canvas.width / 2;
+        const avatarY = 175;
+        const avatarRadius = avatarSize / 2;
+
         ctx.save();
         ctx.beginPath();
-        ctx.arc(canvas.width / 2, 250, 150, 0, Math.PI * 2, true);
+        ctx.arc(avatarX, avatarY, avatarRadius, 0, Math.PI * 2, true);
         ctx.closePath();
         ctx.clip();
-        const avatar = await loadImage(member.user.displayAvatarURL({ extension: "png", size: 512 }));
-        ctx.drawImage(avatar, canvas.width / 2 - 150, 100, 300, 300);
+        
+        try {
+            const avatarURL = member.user.displayAvatarURL({ extension: "png", size: 512 });
+            const avatar = await loadImage(avatarURL);
+            ctx.drawImage(avatar, avatarX - avatarRadius, avatarY - avatarRadius, avatarSize, avatarSize);
+        } catch (err) {
+            console.error("Gagal memuat avatar:", err);
+        }
         ctx.restore();
 
-        // Overlay Lingkaran Putih (Border Avatar)
+        // Border Avatar Putih
         ctx.strokeStyle = "#ffffff";
-        ctx.lineWidth = 10;
+        ctx.lineWidth = 8;
         ctx.beginPath();
-        ctx.arc(canvas.width / 2, 250, 155, 0, Math.PI * 2, true);
+        ctx.arc(avatarX, avatarY, avatarRadius + 4, 0, Math.PI * 2, true);
         ctx.stroke();
 
         // Gaya teks
         ctx.fillStyle = "#ffffff";
         ctx.textAlign = "center";
+        ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
+        ctx.shadowBlur = 10;
+        ctx.shadowOffsetX = 2;
+        ctx.shadowOffsetY = 2;
 
-        // Teks WELCOME (Besar)
-        ctx.font = "bold 120px sans-serif";
-        ctx.fillText("WELCOME", canvas.width / 2, 520);
+        // Teks WELCOME
+        ctx.font = "bold 90px sans-serif";
+        ctx.fillText("WELCOME", canvas.width / 2, 370);
 
-        // Nama Member (Sedang)
-        ctx.font = "60px sans-serif";
-        ctx.fillText(member.user.username.toUpperCase(), canvas.width / 2, 600);
+        // Nama Member
+        ctx.font = "bold 50px sans-serif";
+        ctx.fillText(member.user.username.toUpperCase(), canvas.width / 2, 430);
 
-        // Teks Bawah (Kecil)
-        ctx.font = "35px sans-serif";
-        ctx.fillText(`SELAMAT DATANG DI ${member.guild.name.toUpperCase()} 🦞🐬`, canvas.width / 2, 670);
+        // Teks Bawah
+        ctx.font = "bold 30px sans-serif";
+        ctx.fillText(`SELAMAT DATANG DI ${member.guild.name.toUpperCase()}`, canvas.width / 2, 480);
 
         const attachment = new AttachmentBuilder(canvas.toBuffer(), { name: "welcome-image.png" });
 
