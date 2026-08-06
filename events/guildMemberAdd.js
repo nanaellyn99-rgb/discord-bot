@@ -30,15 +30,14 @@ module.exports = {
             ctx.drawImage(background, 0, 0, canvas.width, canvas.height);
         } catch (err) {
             console.error("Gagal memuat background image:", err);
-            // Fallback warna jika gambar gagal dimuat
             ctx.fillStyle = "#2c2f33";
             ctx.fillRect(0, 0, canvas.width, canvas.height);
         }
 
-        // Avatar (Lingkaran di Tengah Atas)
-        const avatarSize = 220;
+        // Avatar (Lingkaran di Tengah)
+        const avatarSize = 250;
         const avatarX = canvas.width / 2;
-        const avatarY = 175;
+        const avatarY = 160;
         const avatarRadius = avatarSize / 2;
 
         ctx.save();
@@ -56,32 +55,35 @@ module.exports = {
         }
         ctx.restore();
 
-        // Border Avatar Putih
+        // Border Avatar Putih (Lebih Tebal)
         ctx.strokeStyle = "#ffffff";
-        ctx.lineWidth = 8;
+        ctx.lineWidth = 10;
         ctx.beginPath();
-        ctx.arc(avatarX, avatarY, avatarRadius + 4, 0, Math.PI * 2, true);
+        ctx.arc(avatarX, avatarY, avatarRadius + 5, 0, Math.PI * 2, true);
         ctx.stroke();
 
         // Gaya teks
         ctx.fillStyle = "#ffffff";
         ctx.textAlign = "center";
-        ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
-        ctx.shadowBlur = 10;
-        ctx.shadowOffsetX = 2;
-        ctx.shadowOffsetY = 2;
+        
+        // Shadow untuk teks agar mirip contoh
+        ctx.shadowColor = "rgba(0, 0, 0, 0.8)";
+        ctx.shadowBlur = 5;
+        ctx.shadowOffsetX = 3;
+        ctx.shadowOffsetY = 3;
 
-        // Teks WELCOME
-        ctx.font = "bold 90px sans-serif";
-        ctx.fillText("WELCOME", canvas.width / 2, 370);
+        // Teks WELCOME (Font lebih tebal)
+        ctx.font = "bold 110px Impact, sans-serif";
+        ctx.fillText("WELCOME", canvas.width / 2, 360);
 
         // Nama Member
-        ctx.font = "bold 50px sans-serif";
-        ctx.fillText(member.user.username.toUpperCase(), canvas.width / 2, 430);
+        ctx.font = "bold 60px Impact, sans-serif";
+        ctx.fillText(member.user.username.toUpperCase(), canvas.width / 2, 425);
 
-        // Teks Bawah
-        ctx.font = "bold 30px sans-serif";
-        ctx.fillText(`SELAMAT DATANG DI ${member.guild.name.toUpperCase()}`, canvas.width / 2, 480);
+        // Teks Bawah + Emoji (Sesuai contoh gambar)
+        ctx.font = "bold 35px Impact, sans-serif";
+        const subText = `SELAMAT DATANG DI ${member.guild.name.toUpperCase()} 🦞🐬`;
+        ctx.fillText(subText, canvas.width / 2, 480);
 
         const attachment = new AttachmentBuilder(canvas.toBuffer(), { name: "welcome-image.png" });
 
