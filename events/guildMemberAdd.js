@@ -5,7 +5,7 @@ const path = require("path");
 module.exports = {
     name: Events.GuildMemberAdd,
     async execute(member) {
-        if (member.user.bot) return; // Abaikan bot
+        if (member.user.bot) return;
 
         const welcomeChannelId = process.env.WELCOME_CHANNEL_ID;
         if (!welcomeChannelId) return console.log("WELCOME_CHANNEL_ID tidak diatur di .env");
@@ -15,29 +15,27 @@ module.exports = {
             try {
                 channel = await member.guild.channels.fetch(welcomeChannelId);
             } catch (err) {
-                return console.log(`Channel welcome dengan ID ${welcomeChannelId} tidak ditemukan atau bot tidak punya akses.`);
+                return console.log(`Channel welcome dengan ID ${welcomeChannelId} tidak ditemukan.`);
             }
         }
-        if (!channel) return console.log(`Channel welcome dengan ID ${welcomeChannelId} tidak ditemukan.`);
+        if (!channel) return;
 
-        // Ukuran canvas sesuai contoh (1024x500)
         const canvas = createCanvas(1024, 500);
         const ctx = canvas.getContext("2d");
 
-        // Load background image
+        // Load background
         try {
             const background = await loadImage(path.join(__dirname, "..", "welcome-bg.png"));
             ctx.drawImage(background, 0, 0, canvas.width, canvas.height);
         } catch (err) {
-            console.error("Gagal memuat background image:", err);
             ctx.fillStyle = "#2c2f33";
             ctx.fillRect(0, 0, canvas.width, canvas.height);
         }
 
-        // Avatar (Lingkaran di Tengah)
-        const avatarSize = 250;
+        // Avatar
+        const avatarSize = 230;
         const avatarX = canvas.width / 2;
-        const avatarY = 160;
+        const avatarY = 165;
         const avatarRadius = avatarSize / 2;
 
         ctx.save();
@@ -51,39 +49,44 @@ module.exports = {
             const avatar = await loadImage(avatarURL);
             ctx.drawImage(avatar, avatarX - avatarRadius, avatarY - avatarRadius, avatarSize, avatarSize);
         } catch (err) {
-            console.error("Gagal memuat avatar:", err);
+            console.error("Avatar error:", err);
         }
         ctx.restore();
 
-        // Border Avatar Putih (Lebih Tebal)
+        // Border Avatar
         ctx.strokeStyle = "#ffffff";
         ctx.lineWidth = 10;
         ctx.beginPath();
         ctx.arc(avatarX, avatarY, avatarRadius + 5, 0, Math.PI * 2, true);
         ctx.stroke();
 
-        // Gaya teks
+        // Gaya Teks (Mirip Font Discord/Koya)
         ctx.fillStyle = "#ffffff";
         ctx.textAlign = "center";
         
-        // Shadow untuk teks agar mirip contoh
-        ctx.shadowColor = "rgba(0, 0, 0, 0.8)";
-        ctx.shadowBlur = 5;
-        ctx.shadowOffsetX = 3;
-        ctx.shadowOffsetY = 3;
+        // Helper function untuk teks yang tidak overload
+        const applyText = (canvas, text, fontSize) => {
+            const ctx = canvas.getContext("2d");
+            let size = fontSize;
+            do {
+                ctx.font = `bold ${size -= 5}px sans-serif`;
+            } while (ctx.measureText(text).width > canvas.width - 100);
+            return ctx.font;
+        };
 
-        // Teks WELCOME (Font lebih tebal)
-        ctx.font = "bold 110px Impact, sans-serif";
-        ctx.fillText("WELCOME", canvas.width / 2, 360);
+        // 1. Teks WELCOME
+        ctx.font = "bold 85px sans-serif";
+        ctx.fillText("WELCOME", canvas.width / 2, 365);
 
-        // Nama Member
-        ctx.font = "bold 60px Impact, sans-serif";
-        ctx.fillText(member.user.username.toUpperCase(), canvas.width / 2, 425);
+        // 2. Nama Member (Auto-scale jika kepanjangan)
+        const username = member.user.username.toUpperCase();
+        ctx.font = applyText(canvas, username, 65);
+        ctx.fillText(username, canvas.width / 2, 425);
 
-        // Teks Bawah + Emoji (Sesuai contoh gambar)
-        ctx.font = "bold 35px Impact, sans-serif";
+        // 3. Teks Bawah
         const subText = `SELAMAT DATANG DI ${member.guild.name.toUpperCase()} 🦞🐬`;
-        ctx.fillText(subText, canvas.width / 2, 480);
+        ctx.font = applyText(canvas, subText, 35);
+        ctx.fillText(subText, canvas.width / 2, 475);
 
         const attachment = new AttachmentBuilder(canvas.toBuffer(), { name: "welcome-image.png" });
 
