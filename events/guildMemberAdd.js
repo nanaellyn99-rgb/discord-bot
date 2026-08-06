@@ -1,6 +1,9 @@
 const { Events, AttachmentBuilder } = require("discord.js");
-const { createCanvas, loadImage } = require("canvas");
+const { createCanvas, loadImage, registerFont } = require("canvas");
 const path = require("path");
+
+// Daftarkan font kustom
+registerFont(path.join(__dirname, "..", "fonts", "AsteroidBlaster.ttf"), { family: "AsteroidBlaster" });
 
 module.exports = {
     name: Events.GuildMemberAdd,
@@ -53,57 +56,51 @@ module.exports = {
         }
         ctx.restore();
 
-        // Border Avatar (Lebih Halus)
+        // Border Avatar
         ctx.strokeStyle = "#ffffff";
         ctx.lineWidth = 8;
         ctx.beginPath();
         ctx.arc(avatarX, avatarY, avatarRadius + 5, 0, Math.PI * 2, true);
         ctx.stroke();
 
-        // --- STYLING TEKS (ANTI-FLAT) ---
+        // --- STYLING TEKS DENGAN FONT KUSTOM ---
         ctx.fillStyle = "#ffffff";
         ctx.textAlign = "center";
         
-        // Fungsi untuk memberikan efek glow/shadow agar tidak flat
-        const drawTextWithStyle = (text, x, y, font) => {
+        const drawStyledText = (text, x, y, font) => {
             ctx.font = font;
-            // Shadow Layer (Outer Glow)
-            ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
-            ctx.shadowBlur = 7;
-            ctx.shadowOffsetX = 2;
-            ctx.shadowOffsetY = 2;
+            ctx.shadowColor = "rgba(0, 0, 0, 0.7)";
+            ctx.shadowBlur = 8;
+            ctx.shadowOffsetX = 3;
+            ctx.shadowOffsetY = 3;
             ctx.fillText(text, x, y);
-            
-            // Reset shadow untuk layer berikutnya (opsional, untuk ketajaman)
-            ctx.shadowBlur = 0;
-            ctx.shadowOffsetX = 0;
-            ctx.shadowOffsetY = 0;
+            ctx.shadowBlur = 0; // Reset shadow
         };
 
-        // Helper untuk font dinamis (Montserrat)
-        const getFont = (text, baseSize, maxWidth) => {
-            let size = baseSize;
-            do {
-                ctx.font = `bold ${size}px Montserrat, sans-serif`;
-                if (ctx.measureText(text).width < maxWidth) break;
-                size -= 2;
-            } while (size > 20);
-            return ctx.font;
-        };
+        // 1. Teks WELCOME (Besar)
+        drawStyledText("WELCOME", canvas.width / 2, 365, "90px AsteroidBlaster");
 
-        // 1. Teks WELCOME (Montserrat Bold)
-        drawTextWithStyle("WELCOME", canvas.width / 2, 365, "bold 95px Montserrat, sans-serif");
-
-        // 2. Nama Member (Auto-scale)
+        // 2. Nama Member (Lebih Kecil dari WELCOME)
         const username = member.user.username.toUpperCase();
-        const nameFont = getFont(username, 60, canvas.width - 150);
-        drawTextWithStyle(username, canvas.width / 2, 425, nameFont);
+        let nameFontSize = 55;
+        ctx.font = `${nameFontSize}px AsteroidBlaster`;
+        // Auto-scale jika kepanjangan
+        while (ctx.measureText(username).width > canvas.width - 150 && nameFontSize > 20) {
+            nameFontSize -= 5;
+            ctx.font = `${nameFontSize}px AsteroidBlaster`;
+        }
+        drawStyledText(username, canvas.width / 2, 425, ctx.font);
 
-        // 3. Teks Bawah
+        // 3. Teks Bawah (Paling Kecil)
         const serverName = member.guild.name.toUpperCase();
         const subText = `SELAMAT DATANG DI ${serverName} 🦞🐬`;
-        const subFont = getFont(subText, 32, canvas.width - 100);
-        drawTextWithStyle(subText, canvas.width / 2, 475, subFont);
+        let subFontSize = 28;
+        ctx.font = `${subFontSize}px AsteroidBlaster`;
+        while (ctx.measureText(subText).width > canvas.width - 100 && subFontSize > 15) {
+            subFontSize -= 2;
+            ctx.font = `${subFontSize}px AsteroidBlaster`;
+        }
+        drawStyledText(subText, canvas.width / 2, 475, ctx.font);
 
         const attachment = new AttachmentBuilder(canvas.toBuffer(), { name: "welcome-image.png" });
 
