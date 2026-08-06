@@ -1,6 +1,6 @@
 FROM node:22-bookworm
 
-# Install dependensi sistem untuk canvas, font tebal, dan emoji
+# Install dependensi sistem untuk canvas, font Montserrat (mirip Discord), dan emoji
 RUN apt-get update && apt-get install -y \
     build-essential \
     pkg-config \
@@ -12,6 +12,7 @@ RUN apt-get update && apt-get install -y \
     libpixman-1-dev \
     fonts-liberation \
     fonts-noto-color-emoji \
+    fonts-montserrat \
     fontconfig \
     && rm -rf /var/lib/apt/lists/*
 

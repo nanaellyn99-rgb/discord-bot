@@ -15,7 +15,7 @@ module.exports = {
             try {
                 channel = await member.guild.channels.fetch(welcomeChannelId);
             } catch (err) {
-                return console.log(`Channel welcome dengan ID ${welcomeChannelId} tidak ditemukan.`);
+                return console.log(`Channel welcome tidak ditemukan.`);
             }
         }
         if (!channel) return;
@@ -33,9 +33,9 @@ module.exports = {
         }
 
         // Avatar
-        const avatarSize = 230;
+        const avatarSize = 240;
         const avatarX = canvas.width / 2;
-        const avatarY = 165;
+        const avatarY = 160;
         const avatarRadius = avatarSize / 2;
 
         ctx.save();
@@ -53,40 +53,57 @@ module.exports = {
         }
         ctx.restore();
 
-        // Border Avatar
+        // Border Avatar (Lebih Halus)
         ctx.strokeStyle = "#ffffff";
-        ctx.lineWidth = 10;
+        ctx.lineWidth = 8;
         ctx.beginPath();
         ctx.arc(avatarX, avatarY, avatarRadius + 5, 0, Math.PI * 2, true);
         ctx.stroke();
 
-        // Gaya Teks (Mirip Font Discord/Koya)
+        // --- STYLING TEKS (ANTI-FLAT) ---
         ctx.fillStyle = "#ffffff";
         ctx.textAlign = "center";
         
-        // Helper function untuk teks yang tidak overload
-        const applyText = (canvas, text, fontSize) => {
-            const ctx = canvas.getContext("2d");
-            let size = fontSize;
+        // Fungsi untuk memberikan efek glow/shadow agar tidak flat
+        const drawTextWithStyle = (text, x, y, font) => {
+            ctx.font = font;
+            // Shadow Layer (Outer Glow)
+            ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
+            ctx.shadowBlur = 7;
+            ctx.shadowOffsetX = 2;
+            ctx.shadowOffsetY = 2;
+            ctx.fillText(text, x, y);
+            
+            // Reset shadow untuk layer berikutnya (opsional, untuk ketajaman)
+            ctx.shadowBlur = 0;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 0;
+        };
+
+        // Helper untuk font dinamis (Montserrat)
+        const getFont = (text, baseSize, maxWidth) => {
+            let size = baseSize;
             do {
-                ctx.font = `bold ${size -= 5}px sans-serif`;
-            } while (ctx.measureText(text).width > canvas.width - 100);
+                ctx.font = `bold ${size}px Montserrat, sans-serif`;
+                if (ctx.measureText(text).width < maxWidth) break;
+                size -= 2;
+            } while (size > 20);
             return ctx.font;
         };
 
-        // 1. Teks WELCOME
-        ctx.font = "bold 85px sans-serif";
-        ctx.fillText("WELCOME", canvas.width / 2, 365);
+        // 1. Teks WELCOME (Montserrat Bold)
+        drawTextWithStyle("WELCOME", canvas.width / 2, 365, "bold 95px Montserrat, sans-serif");
 
-        // 2. Nama Member (Auto-scale jika kepanjangan)
+        // 2. Nama Member (Auto-scale)
         const username = member.user.username.toUpperCase();
-        ctx.font = applyText(canvas, username, 65);
-        ctx.fillText(username, canvas.width / 2, 425);
+        const nameFont = getFont(username, 60, canvas.width - 150);
+        drawTextWithStyle(username, canvas.width / 2, 425, nameFont);
 
         // 3. Teks Bawah
-        const subText = `SELAMAT DATANG DI ${member.guild.name.toUpperCase()} 🦞🐬`;
-        ctx.font = applyText(canvas, subText, 35);
-        ctx.fillText(subText, canvas.width / 2, 475);
+        const serverName = member.guild.name.toUpperCase();
+        const subText = `SELAMAT DATANG DI ${serverName} 🦞🐬`;
+        const subFont = getFont(subText, 32, canvas.width - 100);
+        drawTextWithStyle(subText, canvas.width / 2, 475, subFont);
 
         const attachment = new AttachmentBuilder(canvas.toBuffer(), { name: "welcome-image.png" });
 
